@@ -32,4 +32,4 @@ path() {
 	fi
 }
 
-path | mew "$@" | ${SHELL:-"/bin/sh"} &
+path | mew -e "$@"
