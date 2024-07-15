@@ -71,6 +71,7 @@ static struct xdg_activation_v1 *activation;
 static struct wl_surface *surface;
 static struct wl_registry *registry;
 static Drwl *drw;
+static struct wl_callback *frame_callback;
 
 #include "config.h"
 
@@ -168,7 +169,7 @@ loadfonts(void)
 		die("no fonts could be loaded");
 
 	lrpad = drw->font->height;
-	bh = drw->font->height + 2;
+	bh = drw->font->height + (2 * scale);
 	lines = MAX(lines, 0);
 	mh = (lines + 1) * bh;
 	promptw = (prompt && *prompt) ? TEXTW(prompt) - lrpad / 4 : 0;
@@ -322,6 +323,27 @@ drawmenu(void)
 	wl_surface_attach(surface, buf->wl_buf, 0, 0);
 	wl_surface_damage_buffer(surface, 0, 0, mw, mh);
 	poolbuf_destroy(buf);
+	wl_surface_commit(surface);
+}
+
+static void
+frame_callback_handle_done(void *data, struct wl_callback *callback,
+		uint32_t time)
+{
+	wl_callback_destroy(frame_callback);
+	frame_callback = NULL;
+	drawmenu();
+}
+
+static const struct wl_callback_listener frame_callback_listener = {
+	.done = frame_callback_handle_done,
+};
+
+static void
+redraw()
+{
+	frame_callback = wl_surface_frame(surface);
+	wl_callback_add_listener(frame_callback, &frame_callback_listener, NULL);
 	wl_surface_commit(surface);
 }
 
@@ -613,7 +635,7 @@ keyboard_keypress(enum wl_keyboard_key_state state, xkb_keysym_t sym, int ctrl, 
 			insert(buf, strnlen(buf, 8));
 	}
 draw:
-	drawmenu();
+	redraw();
 }
 
 static void
@@ -729,6 +751,7 @@ surface_handle_preferred_scale(void *data,
 	scale = factor;
 	loadfonts();
 	zwlr_layer_surface_v1_set_size(layer_surface, 0, mh / scale);
+	redraw();
 }
 
 static const struct wl_surface_listener surface_listener = {
@@ -832,7 +855,6 @@ run(void)
 	}; 
 
 	match();
-	drawmenu();
 
 	while (running) { 
 		if (wl_display_prepare_read(display) < 0)
@@ -889,8 +911,6 @@ setup(void)
 	if (!(drw = drwl_create()))
 		die("cannot create drwl drawing context");
 	loadfonts();
-
-	match();
 
 	surface = wl_compositor_create_surface(compositor);
 	wl_surface_add_listener(surface, &surface_listener, NULL);
