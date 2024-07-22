@@ -72,6 +72,8 @@ static struct wl_surface *surface;
 static struct wl_registry *registry;
 static Drwl *drw;
 static struct wl_callback *frame_callback;
+/* default output supplied by compositor */
+static struct wl_output *output = NULL; 
 
 #include "config.h"
 
@@ -729,7 +731,7 @@ layer_surface_handle_configure(void *data, struct zwlr_layer_surface_v1 *surface
 {
 	mw = width * scale;
 	mh = height * scale;
-	inputw = mw / 3; /* input width: ~33% of monitor width */
+	inputw = mw / 3; /* input width: ~33% of output width */
 	zwlr_layer_surface_v1_ack_configure(surface, serial);
 	drawmenu();
 }
@@ -775,6 +777,24 @@ static const struct wl_data_device_listener data_device_listener = {
 };
 
 static void
+output_handle_name(void *data, struct wl_output *wl_output, const char *name)
+{
+	if (output_name && !strcmp(name, output_name))
+		output = wl_output;
+	else
+		wl_output_destroy(wl_output);
+}
+
+static const struct wl_output_listener output_listener = {
+	.geometry = noop,
+	.mode = noop,
+	.done = noop,
+	.scale = noop,
+	.name = output_handle_name,
+	.description = noop,
+};
+
+static void
 seat_handle_capabilities(void *data, struct wl_seat *wl_seat, enum wl_seat_capability caps)
 {
 	if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD))
@@ -809,7 +829,11 @@ registry_handle_global(void *data, struct wl_registry *registry,
 			&wl_data_device_manager_interface, 3);
 	else if (!strcmp(interface, xdg_activation_v1_interface.name))
 		activation = wl_registry_bind(registry, name, &xdg_activation_v1_interface, 1);
-	else if (!strcmp(interface, wl_seat_interface.name)) {
+	else if (!strcmp(interface, wl_output_interface.name)) {
+		struct wl_output *output = wl_registry_bind(registry, name,
+			&wl_output_interface, 4);
+		wl_output_add_listener(output, &output_listener, NULL);
+	} else if (!strcmp(interface, wl_seat_interface.name)) {
 		seat = wl_registry_bind (registry, name, &wl_seat_interface, 4);
 		wl_seat_add_listener(seat, &seat_listener, NULL);
 	}
@@ -857,7 +881,6 @@ run(void)
 
 	match();
 	drawmenu();
-	drawmenu();
 
 	while (running) { 
 		if (wl_display_prepare_read(display) < 0)
@@ -896,6 +919,7 @@ setup(void)
 	registry = wl_display_get_registry(display);
 	wl_registry_add_listener(registry, &registry_listener, NULL);
 	wl_display_roundtrip(display);
+	wl_display_roundtrip(display); /* output & seat listeners */
 	
 	if (!compositor)
 		die("wl_compositor not available");
@@ -905,6 +929,9 @@ setup(void)
 		die("layer_shell not available");
 	if (!data_device_manager)
 		die("data_device_manager not available");
+
+	if (output_name && !output)
+		die("output %s not found", output_name);
 
 	data_device = wl_data_device_manager_get_data_device(
 		data_device_manager, seat);
@@ -919,7 +946,7 @@ setup(void)
 	wl_surface_add_listener(surface, &surface_listener, NULL);
 
 	layer_surface = zwlr_layer_shell_v1_get_layer_surface(layer_shell,
-				surface, NULL, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "mew");
+				surface, output, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "mew");
 	zwlr_layer_surface_v1_set_size(layer_surface, 0, mh);
 	zwlr_layer_surface_v1_set_anchor(layer_surface, 
 		(top ? ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP : ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM ) |
@@ -936,7 +963,7 @@ setup(void)
 static void
 usage(void)
 {
-	die("usage: mew [-beiv] [-l lines] [-p prompt] [-f font]\n"
+	die("usage: mew [-beiv] [-l lines] [-p prompt] [-f font] [-o output]\n"
 	    "           [-nb color] [-nf color] [-sb color] [-sf color]");
 }
 
@@ -961,6 +988,8 @@ main(int argc, char *argv[])
 			usage();
 		else if (!strcmp(argv[i], "-l"))
 			lines = atoi(argv[++i]);
+		else if (!strcmp(argv[i], "-m"))
+			output_name = argv[++i];
 		else if (!strcmp(argv[i], "-p"))
 			prompt = argv[++i];
 		else if (!strcmp(argv[i], "-f"))

@@ -11,6 +11,9 @@ static uint32_t colors[][2] = {
 	[SchemeOut]  = { 0x000000ff, 0x00ffffff },
 };
 
+/* -m option; if provided, use that output instead of default output */
+static const char *output_name = NULL;
+
 /* -l option; if nonzero, use vertical list with given number of lines */
 static unsigned int lines      = 0;
 
