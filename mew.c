@@ -163,9 +163,9 @@ loadfonts(void)
 {
 	char fontattrs[12];
 
-	drwl_destroy_font(drw->font);
+	drwl_font_destroy(drw->font);
 	snprintf(fontattrs, sizeof(fontattrs), "dpi=%d", 96 * scale);
-	if (!(drwl_load_font(drw, LENGTH(fonts), fonts, fontattrs)))
+	if (!(drwl_font_create(drw, LENGTH(fonts), fonts, fontattrs)))
 		die("no fonts could be loaded");
 
 	lrpad = drw->font->height;
@@ -273,7 +273,7 @@ drawmenu(void)
 	int x = 0, y = 0, w;
 	PoolBuf *buf;
 
-	if (!(buf = poolbuf_create(shm, mw, mh)))
+	if (!(buf = poolbuf_create(shm, mw, mh, 0)))
 		die("poolbuf_create:");
 
 	drwl_prepare_drawing(drw, mw, mh, buf->data, buf->stride);
@@ -322,7 +322,6 @@ drawmenu(void)
 	wl_surface_set_buffer_scale(surface, scale);
 	wl_surface_attach(surface, buf->wl_buf, 0, 0);
 	wl_surface_damage_buffer(surface, 0, 0, mw, mh);
-	poolbuf_destroy(buf);
 	wl_surface_commit(surface);
 }
 
@@ -855,6 +854,8 @@ run(void)
 	}; 
 
 	match();
+	drawmenu();
+	drawmenu();
 
 	while (running) { 
 		if (wl_display_prepare_read(display) < 0)
