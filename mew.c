@@ -341,6 +341,8 @@ static const struct wl_callback_listener frame_callback_listener = {
 static void
 redraw()
 {
+	if (frame_callback)
+		return;
 	frame_callback = wl_surface_frame(surface);
 	wl_callback_add_listener(frame_callback, &frame_callback_listener, NULL);
 	wl_surface_commit(surface);
