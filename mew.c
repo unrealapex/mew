@@ -988,7 +988,7 @@ main(int argc, char *argv[])
 			usage();
 		else if (!strcmp(argv[i], "-l"))
 			lines = atoi(argv[++i]);
-		else if (!strcmp(argv[i], "-m"))
+		else if (!strcmp(argv[i], "-o"))
 			output_name = argv[++i];
 		else if (!strcmp(argv[i], "-p"))
 			prompt = argv[++i];
