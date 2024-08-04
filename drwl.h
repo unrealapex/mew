@@ -48,8 +48,6 @@ typedef struct {
 #define UTF8_INVALID 0xFFFD
 
 static const uint8_t utf8d[] = {
-	// The first part of the table maps bytes to character classes that
-	// to reduce the size of the transition table and create bitmasks.
 	 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -59,8 +57,6 @@ static const uint8_t utf8d[] = {
 	 8,8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
 	10,3,3,3,3,3,3,3,3,3,3,3,3,4,3,3, 11,6,6,6,5,8,8,8,8,8,8,8,8,8,8,8,
 
-	// The second part is a transition table that maps a combination
-	// of a state of the automaton and a character class to a state.
 	 0,12,24,36,60,96,84,12,12,12,48,72, 12,12,12,12,12,12,12,12,12,12,12,12,
 	12, 0,12,12,12,12,12, 0,12, 0,12,12, 12,24,12,12,12,12,12,24,12,24,12,12,
 	12,12,12,12,12,12,12,24,12,12,12,12, 12,24,12,12,12,12,12,12,12,24,12,12,
@@ -88,10 +84,6 @@ drwl_init(void)
 	return fcft_init(FCFT_LOG_COLORIZE_AUTO, 0, FCFT_LOG_CLASS_ERROR);
 }
 
-/*
- * Caller must call drwl_init before drwl_create, and
- * drwl_destroy on returned context after finalizing usage.
- */
 static Drwl *
 drwl_create(void)
 {
@@ -110,11 +102,6 @@ drwl_setfont(Drwl *drwl, Fnt *font)
 		drwl->font = font;
 }
 
-/* 
- * Returned font is set within the drawing context if given.
- * Caller must call drwl_font_destroy on returned font when done using it,
- * otherwise use drwl_destroy when instead given a drawing context.
- */
 static Fnt *
 drwl_font_create(Drwl *drwl, size_t count,
 		const char *names[static count], const char *attributes)
@@ -155,10 +142,6 @@ drwl_stride(unsigned int width)
 	return (((PIXMAN_FORMAT_BPP(PIXMAN_a8r8g8b8) * width + 7) / 8 + 4 - 1) & -4);
 }
 
-/*
- * Caller must call drwl_finish_drawing when finished drawing.
- * Parameter stride can be calculated using drwl_stride.
- */
 static void
 drwl_prepare_drawing(Drwl *drwl, unsigned int w, unsigned int h,
 		uint32_t *bits, int stride)
@@ -209,7 +192,7 @@ drwl_text(Drwl *drwl,
 	pixman_color_t clr;
 	pixman_image_t *fg_pix = NULL;
 	int noellipsis = 0;
-	const struct fcft_glyph *glyph, *eg;
+	const struct fcft_glyph *glyph, *eg = NULL;
 	int fcft_subpixel_mode = FCFT_SUBPIXEL_DEFAULT;
 
 	if (!drwl || (render && (!drwl->scheme || !w || !drwl->pix)) || !text || !drwl->font)
@@ -230,12 +213,13 @@ drwl_text(Drwl *drwl,
 	if (render && (drwl->scheme[ColBg] & 0xFF) != 0xFF)
 		fcft_subpixel_mode = FCFT_SUBPIXEL_NONE;
 
-	// U+2026 == …
 	if (render)
-		eg = fcft_rasterize_char_utf32(drwl->font, 0x2026, fcft_subpixel_mode);
+		eg = fcft_rasterize_char_utf32(drwl->font, 0x2026 /* … */, fcft_subpixel_mode);
 
 	for (const char *p = text, *pp; pp = p, *p; p++) {
-		for (state = UTF8_ACCEPT; *p && utf8decode(&state, &cp, *p) > UTF8_REJECT; p++);
+		for (state = UTF8_ACCEPT; *p &&
+		     utf8decode(&state, &cp, *p) > UTF8_REJECT; p++)
+			;
 		if (!*p || state == UTF8_REJECT) {
 			cp = UTF8_INVALID;
 			if (p > pp)
@@ -253,8 +237,9 @@ drwl_text(Drwl *drwl,
 
 		ty = y + (h - drwl->font->height) / 2 + drwl->font->ascent;
 
-		if (render && !noellipsis && x_kern + glyph->advance.x + eg->advance.x > w && *(p + 1) != '\0') {
-			// cannot fit ellipsis after current codepoint
+		if (render && !noellipsis && x_kern + glyph->advance.x + eg->advance.x > w &&
+		    *(p + 1) != '\0') {
+			/* cannot fit ellipsis after current codepoint */
 			if (drwl_text(drwl, 0, 0, 0, 0, 0, pp, 0) + x_kern <= w) {
 				noellipsis = 1;
 			} else {
@@ -271,7 +256,7 @@ drwl_text(Drwl *drwl,
 		x += x_kern;
 
 		if (render && pixman_image_get_format(glyph->pix) == PIXMAN_a8r8g8b8)
-			// pre-rendered glyphs (eg. emoji)
+			/* pre-rendered glyphs (eg. emoji) */
 			pixman_image_composite32(
 				PIXMAN_OP_OVER, glyph->pix, NULL, drwl->pix, 0, 0, 0, 0,
 				x + glyph->x, ty - glyph->y, glyph->width, glyph->height);

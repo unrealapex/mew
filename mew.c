@@ -272,10 +272,11 @@ drawmenu(void)
 {
 	unsigned int curpos;
 	struct item *item;
-	int x = 0, y = 0, w;
+	int x = 0, y = 0, w, stride;
 	PoolBuf *buf;
 
-	if (!(buf = poolbuf_create(shm, mw, mh, 0)))
+	stride = drwl_stride(mw);
+	if (!(buf = poolbuf_create(shm, mw, mh, stride, 0)))
 		die("poolbuf_create:");
 
 	drwl_prepare_drawing(drw, mw, mh, buf->data, buf->stride);
