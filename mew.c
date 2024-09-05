@@ -1,4 +1,5 @@
 /* See LICENSE file for copyright and license details. */
+#include <errno.h>
 #include <ctype.h>
 #include <locale.h>
 #include <poll.h>
@@ -17,7 +18,7 @@
 #define LENGTH(X)             (sizeof (X) / sizeof (X)[0])
 
 #include "drwl.h"
-#include "poolbuf.h"
+#include "bufpool.h"
 #include "xdg-activation-v1-protocol.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
 
@@ -71,6 +72,7 @@ static struct xdg_activation_v1 *activation;
 static struct wl_surface *surface;
 static struct wl_registry *registry;
 static Drwl *drw;
+static BufPool pool;
 static struct wl_callback *frame_callback;
 /* default output supplied by compositor */
 static struct wl_output *output = NULL; 
@@ -224,6 +226,8 @@ cleanup(void)
 		free(items[i].text);
 	free(items);
 
+	bufpool_cleanup(&pool);
+	drwl_setimage(drw, NULL);
 	drwl_destroy(drw);
 	drwl_fini();
 
@@ -272,14 +276,13 @@ drawmenu(void)
 {
 	unsigned int curpos;
 	struct item *item;
-	int x = 0, y = 0, w, stride;
-	PoolBuf *buf;
+	int x = 0, y = 0, w;
+	DrwBuf *buf;
 
-	stride = drwl_stride(mw);
-	if (!(buf = poolbuf_create(shm, mw, mh, stride, 0)))
-		die("poolbuf_create:");
-
-	drwl_prepare_drawing(drw, mw, mh, buf->data, buf->stride);
+	errno = 0;
+	if (!(buf = bufpool_getbuf(&pool, shm, mw, mh)))
+		die("failed to find available buffer");
+	drwl_setimage(drw, buf->image);
 
 	drwl_setscheme(drw, colors[SchemeNorm]);
 	drwl_rect(drw, 0, 0, mw, mh, 1, 1);
@@ -322,7 +325,7 @@ drawmenu(void)
 		}
 	}
 
-	drwl_finish_drawing(drw);
+	drwl_setimage(drw, NULL);
 	wl_surface_set_buffer_scale(surface, scale);
 	wl_surface_attach(surface, buf->wl_buf, 0, 0);
 	wl_surface_damage_buffer(surface, 0, 0, mw, mh);
@@ -728,13 +731,13 @@ static const struct wl_keyboard_listener keyboard_listener = {
 };
 
 static void
-layer_surface_handle_configure(void *data, struct zwlr_layer_surface_v1 *surface,
+layer_surface_handle_configure(void *data, struct zwlr_layer_surface_v1 *layer_surface,
 		uint32_t serial, uint32_t width, uint32_t height)
 {
 	mw = width * scale;
 	mh = height * scale;
 	inputw = mw / 3; /* input width: ~33% of output width */
-	zwlr_layer_surface_v1_ack_configure(surface, serial);
+	zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 	drawmenu();
 }
 
@@ -882,7 +885,6 @@ run(void)
 	}; 
 
 	match();
-	drawmenu();
 
 	while (running) { 
 		if (wl_display_prepare_read(display) < 0)
