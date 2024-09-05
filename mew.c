@@ -86,7 +86,9 @@ static int (*submit)(const char*) = puts;
 static void
 noop()
 {
-	/* Space intentionally left blank */
+	/*
+	 * meow :3c
+	 */
 }
 
 static void
