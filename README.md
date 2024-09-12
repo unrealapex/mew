@@ -23,13 +23,14 @@ See the man page for details.
 ## Comparison
 
 There are other menu programs or dmenu clones for Wayland, but there
-are a few differenes when it comes to accuracy, as mew is a full accurate
+are a few differences when it comes to accuracy, as mew is a full accurate
 clone, while differing in the output select option due to the differences
 between X and Wayland output/monitor design.
 
 * [wmenu](https://codeberg.org/adnano/wmenu): A more modern dmenu clone,
-  making it's own design choices (such as padding and keybindings), not
-  supporting bitmap fonts (Pango), and being fully rewritten from scratch.
+  making it's own design choices (such as appearance and keybindings), not
+  supporting bitmap fonts (Pango), and being fully rewritten from scratch as a
+  fork of dmenu-wl.
 * [bemenu](https://github.com/Cloudef/bemenu): Being a dynamic menu library
   and client program, it is very flexible, but comes at a cost of being
   unnecessarily complicated and large in codebase.
