@@ -613,9 +613,13 @@ keyboard_keypress(enum wl_keyboard_key_state state, xkb_keysym_t sym, int ctrl, 
 	case XKB_KEY_Return:
 	case XKB_KEY_KP_Enter:
 		submit((sel && !shift) ? sel->text : text);
-		if (!ctrl && submit != exec_cmd)
+		if (!ctrl && submit != exec_cmd) {
 			running = 0;
-		return;
+			return;
+		}
+		if (sel)
+			sel->out = 1;
+		break;
 	case XKB_KEY_Right:
 	case XKB_KEY_KP_Right:
 		if (text[cursor] != '\0') {
