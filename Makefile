@@ -1,42 +1,41 @@
-# mew - dynamic menu
+# mew - dynamic menu for wayland
 # See LICENSE file for copyright and license details.
 .POSIX:
 
-# mew version
 VERSION = 1.0
 
-# pkg-config
 PKG_CONFIG = pkg-config
 
-# paths
-PREFIX = /usr/local
+PREFIX    = /usr/local
 MANPREFIX = $(PREFIX)/share/man
 
-# includes and libs
 PKGS = fcft pixman-1 wayland-client xkbcommon
-INCS = `$(PKG_CONFIG) --cflags $(PKGS)`
-LIBS = `$(PKG_CONFIG) --libs $(PKGS)`
+INCS != $(PKG_CONFIG) --cflags $(PKGS)
+LIBS != $(PKG_CONFIG) --libs $(PKGS)
 
-# flags
-EMCPPFLAGS = -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE -DVERSION=\"$(VERSION)\"
-EMCFLAGS   = -pedantic -Wall $(INCS) $(EMCPPFLAGS) $(CFLAGS)
+MWCPPFLAGS = -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE -DVERSION=\"$(VERSION)\"
+MWCFLAGS   = -pedantic -Wall $(INCS) $(MWCPPFLAGS) $(CFLAGS)
 LDLIBS     = $(LIBS)
+
+PROTO = wlr-layer-shell-unstable-v1-protocol.h xdg-activation-v1-protocol.h xdg-shell-protocol.h
+SRC = mew.c $(PROTO:.h=.c)
+OBJ = $(SRC:.c=.o)
 
 all: mew
 
 .c.o:
-	$(CC) -c $(EMCFLAGS) $<
+	$(CC) -o $@ $(MWCFLAGS) -c $<
 
 config.h:
 	cp config.def.h $@
 
-mew.o: config.h wlr-layer-shell-unstable-v1-protocol.h xdg-activation-v1-protocol.h xdg-shell-protocol.h
+$(OBJ): config.h $(PROTO)
 
-mew: wlr-layer-shell-unstable-v1-protocol.o xdg-activation-v1-protocol.o xdg-shell-protocol.o mew.o
-	$(CC) $(LDFLAGS) -o $@ wlr-layer-shell-unstable-v1-protocol.o xdg-activation-v1-protocol.o xdg-shell-protocol.o mew.o $(LDLIBS)
+mew: $(OBJ)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-WAYLAND_PROTOCOLS = `$(PKG_CONFIG) --variable=pkgdatadir wayland-protocols`
-WAYLAND_SCANNER   = `$(PKG_CONFIG) --variable=wayland_scanner wayland-scanner`
+WAYLAND_PROTOCOLS != $(PKG_CONFIG) --variable=pkgdatadir wayland-protocols
+WAYLAND_SCANNER   != $(PKG_CONFIG) --variable=wayland_scanner wayland-scanner
 
 xdg-activation-v1-protocol.h:
 	$(WAYLAND_SCANNER) client-header $(WAYLAND_PROTOCOLS)/staging/xdg-activation/xdg-activation-v1.xml $@
@@ -55,7 +54,7 @@ wlr-layer-shell-unstable-v1-protocol.c:
 wlr-layer-shell-unstable-v1-protocol.o: xdg-shell-protocol.o
 
 clean:
-	rm -f mew *.o *-protocol.*
+	rm -f mew $(OBJ) $(PROTO:.h=.c) $(PROTO)
 
 install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
@@ -67,8 +66,8 @@ install: all
 	chmod 644 $(DESTDIR)$(MANPREFIX)/man1/mew.1
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/mew\
-		$(DESTDIR)$(PREFIX)/bin/mew-run\
+	rm -f $(DESTDIR)$(PREFIX)/bin/mew \
+		$(DESTDIR)$(PREFIX)/bin/mew-run \
 		$(DESTDIR)$(MANPREFIX)/man1/mew.1
 
 .PHONY: all clean install uninstall
