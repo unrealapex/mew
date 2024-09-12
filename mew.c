@@ -38,14 +38,15 @@ static struct {
 	struct xkb_keymap *xkb_keymap;
 	struct xkb_state *xkb_state;
 
-	int repeat_delay;
-	int repeat_period;
-	int repeat_timer;
-	enum wl_keyboard_key_state repeat_key_state;
-	xkb_keysym_t repeat_sym;
+	struct {
+		int delay;
+		int period;
+		int timer;
+		enum wl_keyboard_key_state key_state;
+		xkb_keysym_t sym;
+	} repeat;
 
-	int ctrl;
-	int shift;
+	int ctrl, shift, alt;
 } kbd;
 
 static char text[BUFSIZ] = "";
@@ -481,14 +482,14 @@ paste(void)
 }
 
 static void
-keyboard_keypress(enum wl_keyboard_key_state state, xkb_keysym_t sym, int ctrl, int shift)
+keyboard_keypress(enum wl_keyboard_key_state state, xkb_keysym_t sym)
 {
 	char buf[8];
 
 	if (state != WL_KEYBOARD_KEY_STATE_PRESSED)
 		return;
 
-	if (ctrl) {
+	if (kbd.ctrl) {
 		switch (xkb_keysym_to_lower(sym)) {
 		case XKB_KEY_a: sym = XKB_KEY_Home; break;
 		case XKB_KEY_b: sym = XKB_KEY_Left; break;
@@ -537,8 +538,28 @@ keyboard_keypress(enum wl_keyboard_key_state state, xkb_keysym_t sym, int ctrl, 
 		case XKB_KEY_bracketleft:
 			cleanup();
 			exit(EXIT_FAILURE);
+		default:
+			return;
+		}
+	} else if (kbd.alt) {
+		switch(sym) {
+		case XKB_KEY_b:
+			movewordedge(-1);
+			goto draw;
+		case XKB_KEY_f:
+			movewordedge(+1);
+			goto draw;
+		case XKB_KEY_g: sym = XKB_KEY_Home;  break;
+		case XKB_KEY_G: sym = XKB_KEY_End;   break;
+		case XKB_KEY_h: sym = XKB_KEY_Up;    break;
+		case XKB_KEY_j: sym = XKB_KEY_Next;  break;
+		case XKB_KEY_k: sym = XKB_KEY_Prior; break;
+		case XKB_KEY_l: sym = XKB_KEY_Down;  break;
+		default:
+			return;
 		}
 	}
+
 	switch (sym) {
 	case XKB_KEY_Delete:
 	case XKB_KEY_KP_Delete:
@@ -612,8 +633,8 @@ keyboard_keypress(enum wl_keyboard_key_state state, xkb_keysym_t sym, int ctrl, 
 		break;
 	case XKB_KEY_Return:
 	case XKB_KEY_KP_Enter:
-		submit((sel && !shift) ? sel->text : text);
-		if (!ctrl && submit != exec_cmd) {
+		submit((sel && !kbd.shift) ? sel->text : text);
+		if (!kbd.ctrl && submit != exec_cmd) {
 			running = 0;
 			return;
 		}
@@ -681,15 +702,15 @@ keyboard_handle_key(void *data, struct wl_keyboard *wl_keyboard,
 	enum wl_keyboard_key_state key_state = _key_state;
 	xkb_keysym_t sym = xkb_state_key_get_one_sym(kbd.xkb_state, key + 8);
 
-	keyboard_keypress(key_state, sym, kbd.ctrl, kbd.shift);
+	keyboard_keypress(key_state, sym);
 
-	if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED && kbd.repeat_period >= 0) {
-		kbd.repeat_key_state = key_state;
-		kbd.repeat_sym = sym;
-		spec.it_value.tv_sec = kbd.repeat_delay / 1000;
-		spec.it_value.tv_nsec = (kbd.repeat_delay % 1000) * 1000000l;
+	if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED && kbd.repeat.period >= 0) {
+		kbd.repeat.key_state = key_state;
+		kbd.repeat.sym = sym;
+		spec.it_value.tv_sec = kbd.repeat.delay / 1000;
+		spec.it_value.tv_nsec = (kbd.repeat.delay % 1000) * 1000000l;
 	} 
-	timerfd_settime(kbd.repeat_timer, 0, &spec, NULL);
+	timerfd_settime(kbd.repeat.timer, 0, &spec, NULL);
 }
 
 static void
@@ -705,6 +726,9 @@ keyboard_handle_modifiers(void *data, struct wl_keyboard *wl_keyboard,
 	kbd.shift = xkb_state_mod_name_is_active(kbd.xkb_state,
 		XKB_MOD_NAME_SHIFT,
 		XKB_STATE_MODS_DEPRESSED | XKB_STATE_MODS_LATCHED);
+	kbd.alt = xkb_state_mod_name_is_active(kbd.xkb_state,
+		XKB_MOD_NAME_ALT,
+		XKB_STATE_MODS_DEPRESSED | XKB_STATE_MODS_LATCHED);
 }
 
 static void
@@ -712,19 +736,19 @@ keyboard_repeat(void)
 {
 	struct itimerspec spec = { 0 };
 
-	keyboard_keypress(kbd.repeat_key_state, kbd.repeat_sym, kbd.ctrl, kbd.shift);
+	keyboard_keypress(kbd.repeat.key_state, kbd.repeat.sym);
 
-	spec.it_value.tv_sec = kbd.repeat_period / 1000;
-	spec.it_value.tv_nsec = (kbd.repeat_period % 1000) * 1000000l;
-	timerfd_settime(kbd.repeat_timer, 0, &spec, NULL);
+	spec.it_value.tv_sec = kbd.repeat.period / 1000;
+	spec.it_value.tv_nsec = (kbd.repeat.period % 1000) * 1000000l;
+	timerfd_settime(kbd.repeat.timer, 0, &spec, NULL);
 }
 
 static void
 keyboard_handle_repeat_info(void *data, struct wl_keyboard *wl_keyboard,
 		int32_t rate, int32_t delay)
 {
-	kbd.repeat_delay = delay;
-	kbd.repeat_period = rate >= 0 ? 1000 / rate : -1;
+	kbd.repeat.delay = delay;
+	kbd.repeat.period = rate >= 0 ? 1000 / rate : -1;
 }
 
 static const struct wl_keyboard_listener keyboard_listener = {
@@ -814,7 +838,7 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat, enum wl_seat_capab
 	kbd.wl_keyboard = wl_seat_get_keyboard(seat);
 	if (!(kbd.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS)))
 		die("xkb_context_new failed");
-	if ((kbd.repeat_timer = timerfd_create(CLOCK_MONOTONIC, 0)) < 0)
+	if ((kbd.repeat.timer = timerfd_create(CLOCK_MONOTONIC, 0)) < 0)
 		die("timerfd_create:");
 	wl_keyboard_add_listener(kbd.wl_keyboard, &keyboard_listener, NULL);
 }
@@ -887,7 +911,7 @@ run(void)
 {
 	struct pollfd pfds[] = { 
 		{ wl_display_get_fd(display), POLLIN },
-		{ kbd.repeat_timer, POLLIN },
+		{ kbd.repeat.timer, POLLIN },
 	}; 
 
 	match();
