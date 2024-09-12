@@ -41,12 +41,10 @@ xdg-activation-v1-protocol.h:
 	$(WAYLAND_SCANNER) client-header $(WAYLAND_PROTOCOLS)/staging/xdg-activation/xdg-activation-v1.xml $@
 xdg-activation-v1-protocol.c:
 	$(WAYLAND_SCANNER) private-code $(WAYLAND_PROTOCOLS)/staging/xdg-activation/xdg-activation-v1.xml $@
-
 xdg-shell-protocol.h:
 	$(WAYLAND_SCANNER) client-header $(WAYLAND_PROTOCOLS)/stable/xdg-shell/xdg-shell.xml $@
 xdg-shell-protocol.c:
 	$(WAYLAND_SCANNER) private-code $(WAYLAND_PROTOCOLS)/stable/xdg-shell/xdg-shell.xml $@
-
 wlr-layer-shell-unstable-v1-protocol.h:
 	$(WAYLAND_SCANNER) client-header wlr-layer-shell-unstable-v1.xml $@
 wlr-layer-shell-unstable-v1-protocol.c:
