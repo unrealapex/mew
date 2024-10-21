@@ -284,7 +284,7 @@ drawmenu(void)
 
 	errno = 0;
 	if (!(buf = bufpool_getbuf(&pool, shm, mw, mh)))
-		die("failed to find available buffer");
+		die(errno ? "bufpool_getbuf:" : "no buffer available");
 	drwl_setimage(drw, buf->image);
 
 	drwl_setscheme(drw, colors[SchemeNorm]);
