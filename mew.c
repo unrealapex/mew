@@ -923,8 +923,7 @@ run(void)
 		{ kbd.repeat.timer, POLLIN },
 	}; 
 
-	match();
-
+	running = 1;
 	while (running) { 
 		if (wl_display_prepare_read(display) < 0)
 			if (wl_display_dispatch_pending(display) < 0)
@@ -999,7 +998,8 @@ setup(void)
 	zwlr_layer_surface_v1_add_listener(layer_surface, &layer_surface_listener, NULL);
 
 	wl_surface_commit(surface);
-	running = 1;
+	wl_display_roundtrip(display); /* mysteriously required */
+	match();
 }
 
 static void
