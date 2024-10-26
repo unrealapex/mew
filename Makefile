@@ -56,7 +56,7 @@ clean:
 
 install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	cp -f mew mew-run $(DESTDIR)$(PREFIX)/bin
+	cp -f mew mew-run mew-path-desktop mew-run-desktop mew-emoji $(DESTDIR)$(PREFIX)/bin
 	chmod 755 $(DESTDIR)$(PREFIX)/bin/mew
 	chmod 755 $(DESTDIR)$(PREFIX)/bin/mew-run
 	mkdir -p $(DESTDIR)$(MANPREFIX)/man1
