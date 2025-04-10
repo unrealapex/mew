@@ -12,16 +12,9 @@ error() {
   printf "%b\n" "${red}$1${fg_reset}"  2>&1
 }
 
-# if ! command -v dmenu || ! command -v xclip; then
-#   if ! command -v dmenu && ! command -v xclip; then
-#     error "dmenu and xclip not found"
-#   elif  ! command -v dmenu; then
-#     error "dmenu not found"
-#   elif ! command -v xclip; then
-#     error "xclip not found"
-#   fi
-#   exit
-# fi
+if ! command -v mew || ! command -v jq || ! command -v wl-copy; then
+  error "dependencies are missing, please make sure jq, mew, and wl-copy are installed"
+fi
 
 # NOTE: make sure that you have an emoji font patched into dmenu or fonts will
 # display as tofu
