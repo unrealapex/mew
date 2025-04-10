@@ -40,6 +40,5 @@ emoji=$(jq -r ' .[] | "\(.characters) \(.en_tts_description)"' "$emoji_file" \
 
 if [ ! "$emoji" = "" ]; then
   echo "$emoji" | wl-copy
-    # FIXME: work around herbe's lack of emoji support
     notify-send "emoji: $emoji copied"
 fi
