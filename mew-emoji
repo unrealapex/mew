@@ -16,12 +16,9 @@ if ! command -v mew || ! command -v jq || ! command -v wl-copy; then
   error "dependencies are missing, please make sure jq, mew, and wl-copy are installed"
 fi
 
-# NOTE: make sure that you have an emoji font patched into dmenu or fonts will
-# display as tofu
-
-# Give dmenu list of all unicode characters.
+# Give mew list of all unicode characters.
 # Shows the selected character in notification daemon if running.
-# Character is copied to system clipboard using xclip.
+# Character is copied to system clipboard using wl-copy.
 
 emoji_file=$HOME/.local/share/unicode/all_emojis.json
 
