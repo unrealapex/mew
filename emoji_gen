@@ -33,4 +33,4 @@ cd data || exit
 mkdir -p "$emoji_dir"
 cp * "$emoji_dir"
 
-printf "%b\n" "${green}emojis successfully downloaded\!${fg_reset}" 1>&2
+printf "%b\n" "${green}emojis successfully installed\!${fg_reset}" 1>&2
