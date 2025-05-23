@@ -29,7 +29,6 @@ cd "$tmp_dir"
 tar -xf prebuilt-data-v${version}.tar.bz2
 cd data || exit
 
-
 mkdir -p "$emoji_dir"
 cp * "$emoji_dir"
 
