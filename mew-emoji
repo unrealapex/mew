@@ -37,5 +37,5 @@ emoji=$(jq -r ' .[] | "\(.characters) \(.en_tts_description)"' "$emoji_file" \
 
 if [ ! "$emoji" = "" ] && grep "$emoji" "$emoji_file"; then
   echo "$emoji" | wl-copy
-    notify-send "emoji: $emoji copied"
+  notify-send "emoji: $emoji copied"
 fi
