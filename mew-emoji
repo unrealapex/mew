@@ -23,7 +23,7 @@ fi
 emoji_file=$HOME/.local/share/unicode/all_emojis.json
 
 if [ ! -f "$emoji_file" ]; then
-  error "emoji file not found, please install it using the emoji-gen script
+  error "emoji file not found, please install it using the emoji_gen script
   or build manually from https://github.com/Mange/emoji-data"
   exit
 fi
