@@ -1,3 +1,2 @@
 #!/bin/sh
-# FIXME: cannot autolaunch d-bus without x11 $display
 gtk-launch "$(mew-path-desktop | sort | mew "$@")" &
