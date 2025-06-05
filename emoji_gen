@@ -1,14 +1,8 @@
 #!/bin/sh
 
-if [ ! "$NO_COLOR" ]; then
-  red="\033[1;31m"
-  green="\033[1;32m"
-  fg_reset="\033[0m"
-else
-  red=""
-  green=""
-  fg_reset=""
-fi
+red="\033[1;31m"
+green="\033[1;32m"
+fg_reset="\033[0m"
 
 error() {
   printf "%b\n" "${red}$1${fg_reset}" 1>&2
