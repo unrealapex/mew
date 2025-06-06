@@ -1,2 +1,39 @@
 #!/bin/sh
-gtk-launch "$(mew-path-desktop | sort | mew "$@")" &
+
+cachedir="${XDG_CACHE_HOME:-"$HOME/.cache"}"
+cache="$cachedir/mew_run_desktop"
+_PATH=~/.local/share/applications:/usr/share/applications
+
+[ -d "$cachedir" ] || mkdir -p "$cachedir"
+
+uptodate() {
+	[ -f "$cache" ] || return 1
+	IFS=:
+	for path in $_PATH; do
+		# non-POSIX
+		test "$path" -nt "$cache" && return 1
+	done
+	return 0
+}
+
+entries() {
+	IFS=:
+	for path in $_PATH; do
+		for entry in "$path"/*.desktop; do
+			entry="${entry##*/}"
+			# remove extension because it looks nicer
+			entry="${entry%.*}"
+			echo "$entry"
+		done
+	done
+}
+
+path() {
+	if uptodate; then
+		cat "$cache"
+	else
+		entries | sort -u | tee "$cache"
+	fi
+}
+
+gtk-launch "$(path | mew "$@")" &
